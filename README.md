@@ -1,5 +1,5 @@
 <div align="center" id="top"> 
-  <img src="./.github/app.gif" alt="BOT Proxmox" />
+  <img src="./.github/app.gif" alt="ThiBot" />
 
   &#xa0;
 
