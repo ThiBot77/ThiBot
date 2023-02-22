@@ -17,12 +17,14 @@ Général
 
 Proxmox
 
-    !proxmox nodes - Affiche une liste de tous les nœuds Proxmox disponibles.
-    !proxmox status [vmid] - Affiche l'état de la machine virtuelle spécifiée par son ID (vmid).
-    !proxmox start [vmid] - Démarre la machine virtuelle spécifiée par son ID (vmid).
-    !proxmox stop [vmid] - Arrête la machine virtuelle spécifiée par son ID (vmid).
-    !proxmox shutdown [vmid] - Arrête proprement la machine virtuelle spécifiée par son ID (vmid).
-    !proxmox create [vmid] [node] [name] [cores] [memory] - Crée une nouvelle machine virtuelle avec les spécifications données.
+     Fonctionnalité 
+     Proxmox : 
+     - Création d'un conteneur LXC sous Debian ou Ubuntu
+     - Démarrage d'un conteneur LXC et d'une VM    
+     - Arrêt d'un conteneur LXC et d'une VM
+     - Redémarrage d'un conteneur LXC et d'une VM
+     - Afficher les informations d'un conteneur LXC et d'une VM
+     - Afficher la liste des conteneurs LXC et des VMs
 
 Contribution
 
