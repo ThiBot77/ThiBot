@@ -15,9 +15,7 @@ Général
     !ping - Renvoie un message de pong pour tester la latence du bot.
     !help - Affiche une liste des commandes disponibles.
 
-Proxmox
-
-     Fonctionnalité 
+Fonctionnalité 
      Proxmox : 
      - Création d'un conteneur LXC sous Debian ou Ubuntu
      - Démarrage d'un conteneur LXC et d'une VM    
