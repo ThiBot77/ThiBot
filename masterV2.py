@@ -1,41 +1,23 @@
-'''
-ThiBot - Bot Discord pour le serveur Discord de Thibault
-Fonction : Gestion du serveur Proxmox SRV-HADES et du serveur Discord de Thibault
-Auteur : Thibault BECHARD
-Etat : En cours de développement
-Version Python : 3.8.5
-Version py-cord : 1.6.0
-Version proxmoxer : 1.1.1
-Version mariadb : 1.5.5
-'''
-
+# Projet : ThiBot | Discord Bot
+# Description : Bot Discord pour la gestion des serveurs Proxmox, et fonctionnalités diverses (musique, jeux, etc...)
+# Auteur : Thibault BECHARD
 
 # Importation des modules nécessaires au bon fonctionnement du bot
-# Module discord pour la gestion du bot discord et des commandes discord (py-cord)
 import discord
-# Module proxmoxer pour la gestion du serveur Proxmox (proxmoxer)
 from proxmoxer import ProxmoxAPI
-# Module re pour la gestion des expressions régulières
 import re
-# Module datetime pour la gestion des dates et heures
 import datetime
-# Module random pour les réponses aléatoires du bot
 import random
-# Module youtube_dl pour la lecture de musique youtube pour la fonction play du bot
-import youtube_dl
-# Module asyncio pour la synchronisation des tâches asynchrones du bot discord
 import asyncio
-# Module mariadb pour la gestion de la base de données MariaDB du bot discord
 import mariadb
-# Module pytube pour la gestion des vidéos youtube
 import pytube
-# Module configparser pour la gestion du fichier de configuration
 import configparser
+import os
+import math
 
 # Récupération des informations de configuration dans le fichier config.ini
 config = configparser.ConfigParser()
 config.read('config.ini')
-
 
 # Obtenir la valeur d'une option dans une section particulière
 proxmox_host = config.get('PROXMOX', 'proxmox_host')
@@ -51,38 +33,34 @@ mariadb_password = config.get('MARIADB', 'mariadb_password')
 mariadb_database = config.get('MARIADB', 'mariadb_database')
 
 # Connexion au serveur Proxmox en utilisant un jeton d'authentification
-# --------------------------------------------------------------------
 proxmox = ProxmoxAPI(proxmox_host, user=username, token_name=token_name, token_value=token_value, verify_ssl=False)
 
 # Déclaration du bot discord avec les intents de gestion des messages et des réactions discord (py-cord)
-# -----------------------------------------------------------------------------------------------------
 bot = discord.Bot(intents=discord.Intents.all())
 
 
-# Début du code du bot discord
-# ----------------------------
-
 # Fonction qui affiche les informations du bot discord lors de son démarrage
-# ------------------------------------------------------------------------
 @bot.event
 async def on_ready():
     print("Bot en ligne !")
     print("Connecté en tant que : ")
     print(bot.user.name)
     print(bot.user.id)
-    # Vérification de la connexion au serveur Proxmox, si la connexion échoue, affichage d'un message d'erreur sinon affichage d'un message de connexion réussie
+    # Vérification de la connexion au serveur Proxmox, si la connexion échoue, affichage d'un message d'erreur.
     if proxmox is None :
         print("Erreur de connexion au serveur Proxmox")
     else:
         print("Connecté au serveur Proxmox")   
+        print("Node : " + proxmox_node)
     print("------")
     # Affichage de l'activité du bot discord, ici "Erika Game"
     activity = discord.Activity(name='Erika Game', type=discord.ActivityType.playing)
     await bot.change_presence(activity=activity)
+    # Affichage de la version du bot discord
+    print("Version : " + version)
     
-
+    
 # Fonction qui récupère le prochain vmid disponible pour la commande createCT
-# --------------------------------------------------------------------------
 def nextvmid():
     # Déclaration des variables
     netmax = 0
@@ -111,16 +89,28 @@ def nextvmid():
     else:
         # retourne netmax+1
         return netmax+1
+    
+def xp_to_level(xp):
+    level = math.floor(0.1 * math.sqrt(xp))
+    return level
 
+# Fonction qui envoie un message personnalisé lorsque le niveau augmente
+async def level_up_message(channel, user, new_level):
+    messages = [
+        f"Félicitations {user.mention}, tu as atteint le niveau {new_level} ! 🎉",
+        f"Bravo {user.mention} ! Tu as désormais le niveau {new_level}. 👍",
+        f"🎊 Hourra {user.mention} ! Tu es passé au niveau {new_level}.",
+        f"{user.mention} vient d'atteindre le niveau {new_level}. Super travail ! 🌟",
+        f"🥳 {user.mention} a débloqué le niveau {new_level}. Continuons sur cette lancée !"
+    ]
+    await channel.send(messages[new_level % len(messages)])
 
 # Fonction qui génère des reponses automatiques au bot discord lors de l'envoi de messages 
-# ---------------------------------------------------------------------------------------
 @bot.event
 async def on_message(message):
     # On vérifie que le bot ne réponde pas à lui même
     if message.author == bot.user:
         return
-    
     # Connexion à la base de données MariaDB
     conn = mariadb.connect(user=mariadb_user, password=mariadb_password, host=mariadb_host, database=mariadb_database)
     if conn is None:
@@ -132,20 +122,18 @@ async def on_message(message):
         result = cursor.fetchone()
         if result is not None:
             current_xp = result[0]
-            new_xp = current_xp + 1
+            new_xp = current_xp + 25
             cursor.execute("UPDATE levels SET xp = %s WHERE user_id = %s AND server_id = %s", (new_xp, message.author.id, message.guild.id))
         else:
             cursor.execute("INSERT INTO levels (user_id, server_id, xp) VALUES (%s, %s, %s)", (message.author.id, message.guild.id, 1))
             current_xp = 0
         conn.commit()
-        
-        level = (current_xp + 1) // 10 + 1
-        if current_xp % 10 == 0 and current_xp > 0:
-            await message.channel.send(f"Félicitations {message.author.mention}, vous avez atteint le niveau {level} sur ce serveur!")
-            print(f"{message.author.name} a atteint le niveau {level} le {datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')}")
+        level = xp_to_level(current_xp)
+        new_level = xp_to_level(new_xp)
+        if new_level > level:
+            await level_up_message(message.channel, message.author, new_level)
         cursor.close()
         conn.close()
-
     # le bot répond a salut et bonjour avec une réponse aléatoire
     if message.content.lower() in ["bonjour", "salut"]:
         responses = [f"Salut {message.author.name} !", f"Bonjour {message.author.name} !", f"Salutations {message.author.name} !"]
@@ -169,7 +157,7 @@ async def on_message(message):
     # le bot répond a salut avec une réponse
     if "xeinmod" in message.content.lower():
         await message.channel.send("Il est moche !")
-    if message.content.lower() in ["ratio", "Ratio","RATIO"]:
+    if "ratio" in message.content.lower():
         responses = [discord.utils.get(message.guild.emojis, name="ratio"), discord.utils.get(message.guild.emojis, name="ratio_argentin"), discord.utils.get(message.guild.emojis, name="ratio_nazi")]
         await message.channel.send(random.choice(responses))
         print(f"{message.author.name} a dit ratio, le bot a répondu ratio")
@@ -177,11 +165,12 @@ async def on_message(message):
     if "quoi" in message.content.lower():
         await message.channel.send("feur")
         print(f"{message.author.name} a dit quoi, le bot a répondu")
+    if "honda" in message.content.lower():
+        await message.channel.send("Honda c'est la vie")
+        print(f"{message.author.name} a dit honda, le bot a répondu")
         
 
-# Fonction qui permet d'afficher le level d'un membre
-# Exemple : level @ThiBot
-# ----------------------------------------------------------
+# Fonction qui permet d'afficher le level d'un membre via la commande level
 class levelview(discord.ui.View):
     @discord.ui.button(label="🏆 Leaderboard", style=discord.ButtonStyle.green) 
     async def button_callback(self, button, interaction):
@@ -189,21 +178,21 @@ class levelview(discord.ui.View):
 
 @bot.command(name="level", description="Affiche le niveau d'un membre")
 async def level(ctx, member: discord.Member):
+    # Connexion à la base de données MariaDB
     conn = mariadb.connect(user=mariadb_user, password=mariadb_password, host=mariadb_host, database=mariadb_database)
     cursor = conn.cursor()
+    # Récupération des informations du membre
     cursor.execute("SELECT xp FROM levels WHERE user_id = %s AND server_id = %s", (member.id, ctx.guild.id))
     result = cursor.fetchone()
     if result:
         xp = result[0]
-        level = xp // 10 + 1
-        xp_next_level = (level * 10) - xp
-        progress_percent = xp / (level * 10) * 100
-
+        level = xp_to_level(xp)
+        xp_next_level = (level + 1) ** 2 * 100 - xp
+        progress_percent = (xp / ((level + 1) ** 2 * 100)) * 100
         # Création de la barre de progression
         filled_bars = int(progress_percent / 5)
         empty_bars = 20 - filled_bars
-        progress_bar = f"[{'■' * filled_bars}{'-' * empty_bars}] {xp}/{level*10} XP"
-        level = f"Niveau {level}"
+        progress_bar = f"[{'■' * filled_bars}{'-' * empty_bars}] {xp}/{(level + 1) ** 2 * 100} XP"
         custom_embed = discord.Embed(title=f"🏆 Niveau du membre", description=f"Voici les informations disponibles sur {member}.", color=0x43d9bd)
         custom_embed.add_field(name="📊 Level", value=level)
         custom_embed.add_field(name="📈 Barre de progression", value=progress_bar, inline=False)
@@ -218,9 +207,7 @@ async def level(ctx, member: discord.Member):
     conn.close()
     
 
-# Fonction qui permet d'afficher le classement du serveur
-# Exemple : leaderboard
-# -----------------------------------------------------------   
+# Fonction qui permet d'afficher le classement du serveur via la commande leaderboard
 @bot.command(name = "leaderboard", description = "Affiche le classement du serveur")
 async def leaderboard(ctx):
     conn = mariadb.connect(user=mariadb_user, password=mariadb_password, host=mariadb_host, database=mariadb_database)
@@ -234,7 +221,7 @@ async def leaderboard(ctx):
                 user_id = result[i][0]
                 user = await bot.fetch_user(user_id)
                 xp = result[i][1]
-                level = xp // 10 + 1
+                level = xp_to_level(xp)
                 if i == 0:
                     custom_embed.add_field(name=f"🥇 {user}", value=f"Level {level} - {xp} XP", inline=False)
                 if i == 1:
@@ -269,10 +256,6 @@ async def setxp(ctx, member: discord.Member, amount: int):
     if amount < 0:
         await ctx.respond("Vous ne pouvez pas mettre un nombre négatif.")
         print(f"{ctx.author.name} a tenté d'utiliser la commande setxp mais il a mis un nombre négatif le {datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')}")
-        return
-    if amount > 999999:
-        await ctx.respond("Vous ne pouvez pas mettre un nombre supérieur à 1 000 000.")
-        print(f"{ctx.author.name} a tenté d'utiliser la commande setxp mais il a mis un nombre supérieur à 1 000 000 le {datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')}")
         return
     
     conn = mariadb.connect(user=mariadb_user, password=mariadb_password, host=mariadb_host, database=mariadb_database)
@@ -448,25 +431,26 @@ async def aide(ctx):
     # Création du menu
     help_embed = discord.Embed(title="Aide pour les commandes", color=0x43d9bd)
     # Ajout des commandes
-    help_embed.add_field(name="createct {password}", value="Permet de créer un conteneur LXC sur Proxmox avec votre nom.", inline=False)
-    help_embed.add_field(name="listvm", value="Permet de lister les machines virtuelles sur Proxmox", inline=False)
-    help_embed.add_field(name="vm {id}", value="Permet de démarrer une VM", inline=False)
-    help_embed.add_field(name="date {id}", value="Permet d'afficher la date du jour", inline=False)
-    help_embed.add_field(name="stopvm {id}", value="Permet de fermer une VM", inline=False)
-    help_embed.add_field(name="ct {id}", value="Permet de démarrer un CT", inline=False)
-    help_embed.add_field(name="stopct {id}", value="Permet de fermer un CT", inline=False)
-    help_embed.add_field(name="vminfo {id}", value="Permet d'afficher les informations d'une VM", inline=False)
-    help_embed.add_field(name="play {url}", value="Permet de jouer de la musique", inline=False)
-    help_embed.add_field(name="leave", value="Permet de faire quitter le bot du salon vocal", inline=False)
-    help_embed.add_field(name="next", value="Permet de passer à la musique suivante", inline=False)
-    help_embed.add_field(name="pause", value="Permet de mettre en pause la musique", inline=False)
-    help_embed.add_field(name="resume", value="Permet de reprendre la musique", inline=False)
-    help_embed.add_field(name="register_birthday {membre}, {date}", value="Permet de s'enregistrer pour la fête d'anniversaire", inline=False)
-    help_embed.add_field(name="birthday", value="Permet d'afficher la liste des membres qui ont leur anniversaire aujourd'hui", inline=False)
-    help_embed.add_field(name="vote {question}, {réponse1,réponse2,etc}", value="Permet de créer un sondage", inline=False)
-    help_embed.set_footer(text="ThiBot - Version " + version)
+    help_embed.add_field(name="👑 /userinfo", value="Affiche les informations d'un utilisateur.", inline=False)
+    help_embed.add_field(name="📆 /serverinfo", value="Affiche les informations du serveur.", inline=False)
+    help_embed.add_field(name="🌐 /botinfo", value="Affiche les informations du bot.", inline=False)
+    help_embed.add_field(name="💬 /aide", value="Affiche les commandes disponibles.", inline=False)
+    help_embed.add_field(name="🔊 /date", value="Affiche la date et l'heure.", inline=False)
+    help_embed.add_field(name="📈 /level", value="Affiche le niveau d'un utilisateur.", inline=False)
+    help_embed.add_field(name="📈 /leaderboard", value="Affiche le classement des utilisateurs.", inline=False)
+    help_embed.add_field(name="▶️ /play", value="Joue une musique.", inline=False)
+    help_embed.add_field(name="⏸️ /stop", value="Arrête la musique.", inline=False)  
+    help_embed.add_field(name="⏭️ /skip", value="Passe à la musique suivante.", inline=False)
+    help_embed.add_field(name="💻 /vminfo", value="Affiche les informations d'un VM.", inline=False)
+    help_embed.add_field(name="💻 /startvm", value="Démarrer une VM.", inline=False)
+    help_embed.add_field(name="💻 /stopvm", value="Arrêter une VM.", inline=False)
+    help_embed.add_field(name="💻 /listvm", value="Affiche la liste des VM.", inline=False)
+    help_embed.add_field(name="💻 /createct", value="Créer un CT.", inline=False)
+    help_embed.add_field(name="🎂 /birthday", value="Affiche les anniversaires du jour.", inline=False)
+    help_embed.add_field(name="🎂 /setbirthday", value="Définir son anniversaire.", inline=False)
+    help_embed.add_field(name="🧑‍💻 /set_welcomechannel", value="Définir le salon de bienvenue et le role.", inline=False)
+    help_embed.add_field(name="🧑‍💻 /set_vocalchannel", value="Définir le salon vocal de création de channel temporaire", inline=False)
     help_embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/695658154326753284/1070102817911623710/portfolio-2.jpg")
-
     # Envoi du menu
     await ctx.respond(embed=help_embed)
     print("Commande aide effectuée par " + str(ctx.author)  + " à " + str(datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
@@ -948,52 +932,68 @@ def is_valid_music_url(url):
         return False
     
 
-@bot.command()
+@bot.command(name="play", description="Joue de la musique dans un salon vocal.", usage="play <URL>")
 async def play(ctx, url):
-    if not ctx.author.voice: # Si l'utilisateur n'est pas dans un salon vocal
-        await ctx.respond("Vous n'êtes pas dans un salon vocal.")
-        print("Le membres {} a utilisé la commande play mais il n'est pas dans un salon vocal le {}".format(ctx.author, datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
-        return
-    if not ctx.author.voice.channel.permissions_for(ctx.me).connect: # Si le bot n'a pas la permission de se connecter au salon vocal
-        await ctx.respond("Le bot n'a pas la permission de se connecter au salon vocal.")
-        print("Le membres {} a utilisé la commande play mais le bot n'a pas la permission de se connecter au salon vocal le {}".format(ctx.author, datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
-        return
-    if not ctx.author.voice.channel.permissions_for(ctx.me).speak: # Si le bot n'a pas la permission de parler dans le salon vocal
-        await ctx.respond("Le bot n'a pas la permission de parler dans le salon vocal.")
-        print("Le membres {} a utilisé la commande play mais le bot n'a pas la permission de parler dans le salon vocal le {}".format(ctx.author, datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
-        return
-    if not is_valid_music_url(url):
-        await ctx.respond("L'URL n'est pas valide.")
-        print("Le membres {} a utilisé la commande play mais l'URL n'est pas valide le {}".format(ctx.author, datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
-        return
-    
-    global voice_client
+    try:
+        if not ctx.author.voice: # Si l'utilisateur n'est pas dans un salon vocal
+            await ctx.respond("Vous n'êtes pas dans un salon vocal.")
+            print("Le membres {} a utilisé la commande play mais il n'est pas dans un salon vocal le {}".format(ctx.author, datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
+            return
+        if not ctx.author.voice.channel.permissions_for(ctx.me).connect: # Si le bot n'a pas la permission de se connecter au salon vocal
+            await ctx.respond("Le bot n'a pas la permission de se connecter au salon vocal.")
+            print("Le membres {} a utilisé la commande play mais le bot n'a pas la permission de se connecter au salon vocal le {}".format(ctx.author, datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
+            return
+        if not ctx.author.voice.channel.permissions_for(ctx.me).speak: # Si le bot n'a pas la permission de parler dans le salon vocal
+            await ctx.respond("Le bot n'a pas la permission de parler dans le salon vocal.")
+            print("Le membres {} a utilisé la commande play mais le bot n'a pas la permission de parler dans le salon vocal le {}".format(ctx.author, datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
+            return
+        if not is_valid_music_url(url):
+            await ctx.respond("L'URL n'est pas valide.")
+            print("Le membres {} a utilisé la commande play mais l'URL n'est pas valide le {}".format(ctx.author, datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
+            return
+        
+        global voice_client
 
-    voice_channel = ctx.author.voice.channel
+        voice_channel = ctx.author.voice.channel
 
-    if voice_client is None:
-        voice_client = await voice_channel.connect()
-    elif voice_client.channel != voice_channel:
-        await ctx.voice_client.move_to(voice_channel)
+        if voice_client is None:
+            voice_client = await voice_channel.connect()
+        elif voice_client.channel != voice_channel:
+            await ctx.voice_client.move_to(voice_channel)
 
-    youtube = pytube.YouTube(url)
-    video = youtube.streams.get_audio_only()
-    video.download('audio/')
 
-    # Add a delay of one second between requests
-    await asyncio.sleep(1)
+        youtube = pytube.YouTube(url)
+        video = youtube.streams.get_audio_only()
+        
+        await ctx.respond("Préparation de la musique...")
+        
+        # Vérification si la musique existe déjà dans le dossier audio
+        if not os.path.exists('audio/'+video.default_filename):
+            video.download('audio/')
+            print('Téléchargement de la musique...')
+        else:
+            print('La musique existe déjà dans le dossier audio. Elle ne sera pas retéléchargée.')
 
-    source = discord.FFmpegPCMAudio('audio/'+video.default_filename)
-    queue.append(source)
-    custom_embed = discord.Embed(title="Musique ajoutée à la file d'attente", color=0x43d9bd)
-    custom_embed.add_field(name="Titre", value=youtube.title, inline=False)
-    miniature = youtube.thumbnail_url
-    custom_embed.set_image(url=miniature)
-    await ctx.respond(embed=custom_embed)
-    print("Le membres {} a utilisé la commande play pour ajouter la musique {} à la file d'attente le {}".format(ctx.author, youtube.title, datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
-    if not voice_client.is_playing():
-        await play_queue(ctx)
+        # Add a delay of one second between requests
+        await asyncio.sleep(1)
 
+        source = discord.FFmpegPCMAudio('audio/'+video.default_filename)
+        queue.append(source)
+        custom_embed = discord.Embed(title="Musique ajoutée à la file d'attente", color=0x43d9bd)
+        custom_embed.add_field(name="Titre de la musique", value=youtube.title, inline=False)
+        custom_embed.add_field(name="Durée de la musique", value=str(datetime.timedelta(seconds=youtube.length)), inline=False)
+        custom_embed.add_field(name="Auteur de la musique", value=youtube.author, inline=False)
+        miniature = youtube.thumbnail_url
+        custom_embed.set_image(url=miniature)
+        await ctx.send(embed=custom_embed)
+        print("Le membres {} a utilisé la commande play pour ajouter la musique {} à la file d'attente le {}".format(ctx.author, youtube.title, datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
+        if not voice_client.is_playing():
+            await play_queue(ctx)
+            
+    except Exception as e:
+        await ctx.send("Une erreur est survenue lors de l'exécution de la commande.")
+        print("Une erreur est survenue lors de l'exécution de la commande play : {}".format(e))
+ 
 async def play_queue(ctx):
     global voice_client
     if not queue:
@@ -1003,7 +1003,7 @@ async def play_queue(ctx):
     await ctx.respond('Lecture de la prochaine musique dans la file d\'attente...')
     print("Le bot a joué la musique suivante dans la file d'attente le {}".format(datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
 
-@bot.command()
+@bot.command(name="stop", description="Arrêter la musique et déconnecter le client vocal.")
 async def stop(ctx):
     voice_client = ctx.voice_client
     if voice_client:
@@ -1014,34 +1014,19 @@ async def stop(ctx):
     else:
         await ctx.respond('Le client vocal n\'est pas connecté.')
         print("Le membres {} a utilisé la commande stop pour arrêter la musique mais le client vocal n'est pas connecté le {}".format(ctx.author, datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
-
-@bot.command()
-async def next(ctx):
-    if queue:
-        voice_client = ctx.voice_client
-        if not voice_client.is_playing():
-            source = queue.pop(0)
-            voice_client.play(source)
-            await ctx.respond('Passage à la musique suivante.')
-            print("Le membres {} a utilisé la commande next pour passer à la musique suivante le {}".format(ctx.author, datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
+   
+@bot.command(name="skip", description="Passer à la musique suivante.")
+async def skip(ctx):
+    global voice_client
+    if voice_client and voice_client.is_playing():
+        voice_client.stop()
+        if queue:
+            await play_queue(ctx)
+        else:
+            await ctx.respond("Il n'y a plus de musique dans la file d'attente.")
     else:
-        await ctx.respond('La file d\'attente est vide.')
-        print("Le membres {} a utilisé la commande next pour passer à la musique suivante mais la file d'attente est vide le {}".format(ctx.author, datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
-
-
-@bot.command()
-async def listmusic(ctx):
-    if queue:
-        custom_embed = discord.Embed(title="Liste des musiques", color=0x43d9bd)
-        for i in range(len(queue)):
-            custom_embed.add_field(name="Musique {}".format(i+1), value=queue[i], inline=False)
-        await ctx.respond(embed=custom_embed)
-        print("Le membres {} a utilisé la commande listmusic pour afficher la liste des musiques le {}".format(ctx.author, datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
-    else:
-        await ctx.respond('La file d\'attente est vide.')
-        print("Le membres {} a utilisé la commande listmusic pour afficher la liste des musiques mais la file d'attente est vide le {}".format(ctx.author, datetime.datetime.now().strftime('%d/%m/%Y à %Hh%M')))
-
-
+        await ctx.respond("Il n'y a pas de musique en cours de lecture.")
+        
 
 # Commande pour définir le canal de bienvenue
 # Exemple : /set_welcome_channel #bienvenue @role
@@ -1449,3 +1434,4 @@ async def ban_member_if_join_voice_channel():
 # Lancement du bot avec le token du bot Discord (à remplacer par le token de votre bot dans le fichier config.py)
 # ---------------------------------------------------------------------------------------------------------------
 bot.run(bot_token)
+
