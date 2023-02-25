@@ -1,98 +1,74 @@
-<div align="center" id="top"> 
-  <img src="./.github/app.gif" alt="ThiBot" />
 
-  &#xa0;
+# ThiBot | Bot Discord
+## Prérequis
+-  Python 3
+-  Proxmoxer
+-  py-cord
+-  Token Discord
+-  pytube
+- JSON
+- re
+- datetime
+- asyncio
+- mariadb
+- configparser
+- os
+- math
+- requests
 
-  <!-- <a href="https://botproxmox.netlify.app">Demo</a> -->
-</div>
+## Description 
+Ce bot Discord est conçu pour fonctionner avec Proxmoxer, une bibliothèque Python pour interagir avec l'API Proxmox VE. Il offre de nombreuses fonctionnalités, telles que l'affichage des informations d'un utilisateur, du serveur et du bot, la lecture de musique, la gestion de machines virtuelles, la création de conteneurs, l'affichage des anniversaires et bien plus encore. Il dispose également d'une commande d'aide pour répertorier toutes les commandes disponibles.
 
-<h1 align="center">BOT Proxmox</h1>
+Pour utiliser ce bot, vous devrez configurer les informations d'identification de votre serveur Proxmox VE et les ajouter au fichier de configuration du bot. Vous pouvez ensuite inviter le bot sur votre serveur Discord et commencer à l'utiliser en tapant les commandes dans le chat.
 
-<p align="center">
-  <img alt="Github top language" src="https://img.shields.io/github/languages/top/{{YOUR_GITHUB_USERNAME}}/bot-proxmox?color=56BEB8">
+N'hésitez pas à explorer les commandes et à ajouter des fonctionnalités supplémentaires pour personnaliser ce bot selon vos besoins.
+## Installation
+1.  Clonez ce projet
+2.  Installez les bibliothèques nécessaires à l'aide de la commande suivante :
+`pip install -r requirements.txt` 
 
-  <img alt="Github language count" src="https://img.shields.io/github/languages/count/{{YOUR_GITHUB_USERNAME}}/bot-proxmox?color=56BEB8">
+3.  Créez un fichier `.env` à la racine du projet et ajoutez votre Token Discord :
+`DISCORD_TOKEN=your_token_here` 
 
-  <img alt="Repository size" src="https://img.shields.io/github/repo-size/{{YOUR_GITHUB_USERNAME}}/bot-proxmox?color=56BEB8">
+4.  Lancez le bot avec la commande suivante : 
+`python bot.py`
 
-  <img alt="License" src="https://img.shields.io/github/license/{{YOUR_GITHUB_USERNAME}}/bot-proxmox?color=56BEB8">
+### Config.ini : 
+Le fichier `config.ini` est un fichier de configuration utilisé pour stocker les informations de connexion et de configuration du bot Discord ainsi que du cluster Proxmox. Il contient des sections pour chaque système, avec des clés et des valeurs pour les informations spécifiques.
 
-  <!-- <img alt="Github issues" src="https://img.shields.io/github/issues/{{YOUR_GITHUB_USERNAME}}/bot-proxmox?color=56BEB8" /> -->
+La section `[PROXMOX]` contient les informations de connexion pour le cluster Proxmox, y compris l'adresse IP et le port du serveur, le nom de l'utilisateur et le nom du nœud Proxmox. Il contient également un jeton d'authentification pour le bot Proxmox, qui est utilisé pour autoriser les requêtes API.
 
-  <!-- <img alt="Github forks" src="https://img.shields.io/github/forks/{{YOUR_GITHUB_USERNAME}}/bot-proxmox?color=56BEB8" /> -->
+La section `[DISCORD]` contient les informations de connexion du bot Discord, y compris son jeton d'authentification et la version du bot.
 
-  <!-- <img alt="Github stars" src="https://img.shields.io/github/stars/{{YOUR_GITHUB_USERNAME}}/bot-proxmox?color=56BEB8" /> -->
-</p>
+La section `[MARIADB]` contient les informations de connexion de la base de données MariaDB utilisée pour stocker les données du bot, y compris l'adresse IP et le nom d'utilisateur, le mot de passe et le nom de la base de données.
 
-<!-- Status -->
-
-<!-- <h4 align="center"> 
-	🚧  BOT Proxmox 🚀 Under construction...  🚧
-</h4> 
-
-<hr> -->
-
-<p align="center">
-  <a href="#dart-about">About</a> &#xa0; | &#xa0; 
-  <a href="#sparkles-features">Features</a> &#xa0; | &#xa0;
-  <a href="#rocket-technologies">Technologies</a> &#xa0; | &#xa0;
-  <a href="#white_check_mark-requirements">Requirements</a> &#xa0; | &#xa0;
-  <a href="#checkered_flag-starting">Starting</a> &#xa0; | &#xa0;
-  <a href="#memo-license">License</a> &#xa0; | &#xa0;
-  <a href="https://github.com/{{YOUR_GITHUB_USERNAME}}" target="_blank">Author</a>
-</p>
-
-<br>
-
-## :dart: About ##
-
-Describe your project
-
-## :sparkles: Features ##
-
-:heavy_check_mark: Feature 1;\
-:heavy_check_mark: Feature 2;\
-:heavy_check_mark: Feature 3;
-
-## :rocket: Technologies ##
-
-The following tools were used in this project:
-
-- [Expo](https://expo.io/)
-- [Node.js](https://nodejs.org/en/)
-- [React](https://pt-br.reactjs.org/)
-- [React Native](https://reactnative.dev/)
-- [TypeScript](https://www.typescriptlang.org/)
-
-## :white_check_mark: Requirements ##
-
-Before starting :checkered_flag:, you need to have [Git](https://git-scm.com) and [Node](https://nodejs.org/en/) installed.
-
-## :checkered_flag: Starting ##
-
-```bash
-# Clone this project
-$ git clone https://github.com/{{YOUR_GITHUB_USERNAME}}/bot-proxmox
-
-# Access
-$ cd bot-proxmox
-
-# Install dependencies
-$ yarn
-
-# Run the project
-$ yarn start
-
-# The server will initialize in the <http://localhost:3000>
-```
-
-## :memo: License ##
-
-This project is under license from MIT. For more details, see the [LICENSE](LICENSE.md) file.
+Le fichier `config.ini` est utilisé pour stocker les informations de connexion et de configuration de manière centralisée afin que les informations ne soient pas codées en dur dans le code source du bot. Cela permet de modifier les informations de configuration plus facilement sans avoir à modifier directement le code du bot.
 
 
-Made with :heart: by <a href="https://github.com/{{YOUR_GITHUB_USERNAME}}" target="_blank">{{YOUR_NAME}}</a>
+## Commandes
+Voici les différentes commandes disponibles :
 
-&#xa0;
+-   👑 /userinfo : Affiche les informations d'un utilisateur.
+-   📆 /serverinfo : Affiche les informations du serveur.
+-   🌐 /botinfo : Affiche les informations du bot.
+-   💬 /aide : Affiche les commandes disponibles.
+-   🔊 /date : Affiche la date et l'heure.
+-   📈 /level : Affiche le niveau d'un utilisateur.
+-   📈 /leaderboard : Affiche le classement des utilisateurs.
+-   ▶️ /play : Joue une musique.
+-   ⏸️ /stop : Arrête la musique.
+-   ⏭️ /skip : Passe à la musique suivante.
+-   💻 /vminfo : Affiche les informations d'un VM.
+-   💻 /startvm : Démarrer une VM.
+-   💻 /stopvm : Arrêter une VM.
+-   💻 /listvm : Affiche la liste des VM.
+-   💻 /createct : Créer un CT.
+-   🎂 /birthday : Affiche les anniversaires du jour.
+-   🎂 /setbirthday : Définir son anniversaire.
+-   🧑‍💻 /set_welcomechannel : Définir le salon de bienvenue et le role.
+-   🧑‍💻 /set_vocalchannel : Définir le salon vocal de création de channel
 
-<a href="#top">Back to top</a>
+## Contributeurs
+BECHARD Thibault
+
+N'hésitez pas à contribuer à ce projet en ajoutant de nouvelles fonctionnalités ou en améliorant les commandes existantes. Merci de votre soutien ! 🎉
